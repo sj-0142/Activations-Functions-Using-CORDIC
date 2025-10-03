@@ -28,9 +28,4 @@ The design is split into two pipeline sections:
      - **Tanh(x) = sinh(x) × (1 – 0.375x²)**  
      - **Sigmoid(x) = 0.5 × tanh(x/2) + 0.5**  
 
-```mermaid
-flowchart TD
-    A[Input x_in] --> B[Cordic Pipeline<br>(sinh & cosh)]
-    B --> C[Post-CORDIC Pipeline]
-    C -->|Tanh(x)| D1[Output]
-    C -->|Sigmoid(x)| D2[Output]
+
