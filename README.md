@@ -15,6 +15,24 @@ The design leverages DSP slices, pipeline registers, and polynomial approximatio
 
 ---
 
+### Key Design Parameters
+
+- **Data Width**: 32 bits
+- **Fractional Bits**: 14 (Q14 fixed-point format)
+- **CORDIC Iterations**: 16
+- **Pipeline Stages**: 21 total (16 CORDIC + 5 post-processing for tanh and sigmoid calculation)
+
+---
+
+## Implementation & Tools
+ 
+**Hardware Description Language**: Verilog HDL (Verilog 2001)  
+**Synthesis Tool**: Xilinx Vivado Design Suite  
+**Target FPGA**: Nexys 4 DDR (Artix-7 XC7A100T)  
+**Resource Optimization**: DSP48 slices, Block RAM
+
+---
+
 ## Architecture / Design Details  
 
 The design is split into two fully pipelined sections:  
@@ -23,10 +41,14 @@ The design is split into two fully pipelined sections:
    - Iteratively computes `sinh(x)` and `cosh(x)` using shift-add operations and arctanh LUTs.  
    - Fully pipelined for continuous data throughput.  
 
-2. **Post-CORDIC Approximation Pipeline**  
+2. **Post-CORDIC Pipeline**  
    - Computes final outputs:  
      - **Tanh(x) = sinh(x) × (1 – 0.375x²)**  
      - **Sigmoid(x) = 0.5 × tanh(x/2) + 0.5**
+
+
+
+
     
         
 
