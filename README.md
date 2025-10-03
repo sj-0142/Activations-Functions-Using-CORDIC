@@ -22,14 +22,7 @@ The design leverages DSP slices, pipeline registers, and polynomial approximatio
 - **CORDIC Iterations**: 16
 - **Pipeline Stages**: 21 total (16 CORDIC + 5 post-processing for tanh and sigmoid calculation)
 
----
 
-## Implementation & Tools
- 
-**Hardware Description Language**: Verilog HDL (Verilog 2001)  
-**Synthesis Tool**: Xilinx Vivado Design Suite  
-**Target FPGA**: Nexys 4 DDR (Artix-7 XC7A100TCSG324-1)  
-**Resource Optimization**: DSP48 slices, Block RAM
 
 ---
 
@@ -63,12 +56,17 @@ The design is split into two fully pipelined sections:
      4. Multiply with `sinh(x)` → `tanh(x) = sinh(x) × (1 – 0.375x²)`  
      5. Reverse Q14 fixed-point shift (scaling back to correct format)  
    - Final outputs:  
-     - **Tanh(x) ≈ sinh(x) × (1 – 0.375x²) **  
+     - **Tanh(x) ≈ sinh(x) × (1 – 0.375x²)**  
      - **Sigmoid(x) = (tanh(x/2) + 1) / 2**  
 
+---
 
-
-
+## Implementation & Tools
+ 
+**Hardware Description Language**: Verilog HDL (Verilog 2001)  
+**Synthesis Tool**: Xilinx Vivado Design Suite  
+**Target FPGA**: Nexys 4 DDR (Artix-7 XC7A100TCSG324-1)  
+**Resource Optimization**: DSP48 slices, Block RAM
     
         
 
