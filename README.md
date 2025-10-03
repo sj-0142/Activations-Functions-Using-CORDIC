@@ -9,15 +9,15 @@ The design leverages DSP slices, pipeline registers, and polynomial approximatio
 ## Features  
 - **Fully Pipelined CORDIC Engine**: Computes hyperbolic functions (`sinh`, `tanh`, `sigmoid`) with high throughput.  
 - **Polynomial Approximation Optimization**: Custom `1/cosh(x)` approximation with **Mean Absolute Error (MAE) ≈ 2 × 10⁻⁴**.  
-- **High Performance**: Achieves **80 MHz operating frequency** on Nexys-4 FPGA.  
-- **Low Power**: Consumes only **0.021 W dynamic power**.  
+- **Clock Speede**: Achieves a maximum operating frequency of **80 MHz** on Nexys-4 FPGA.  
+- **Low Power**: Consumes only **0.021 W dynamic power** and **0.1W of total power**.  
 - **Scalable Parameters**: Configurable bit-width (`WIDTH`), fractional precision (`FRAC`), and pipeline depth (`ITER`, `POST_STAGES`).  
 
 ---
 
 ## Architecture / Design Details  
 
-The design is split into two pipeline sections:  
+The design is split into two fully pipelined sections:  
 
 1. **CORDIC Hyperbolic Pipeline**  
    - Iteratively computes `sinh(x)` and `cosh(x)` using shift-add operations and arctanh LUTs.  
@@ -26,6 +26,8 @@ The design is split into two pipeline sections:
 2. **Post-CORDIC Approximation Pipeline**  
    - Computes final outputs:  
      - **Tanh(x) = sinh(x) × (1 – 0.375x²)**  
-     - **Sigmoid(x) = 0.5 × tanh(x/2) + 0.5**  
+     - **Sigmoid(x) = 0.5 × tanh(x/2) + 0.5**
+    
+        
 
 
