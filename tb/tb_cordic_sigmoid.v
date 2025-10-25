@@ -1,18 +1,16 @@
 
 module tb_cordic_sigmoid;
 
-    // Parameters
     parameter WIDTH = 32;
     parameter FRAC  = 14;
     parameter ITER  = 16;
     parameter LOG_ITER = 4;
 
-    // Testbench signals
     reg clk;
     reg rst_n;
     reg start;
     reg signed [WIDTH-1:0] x_in;
-    reg func_select;  // 0 = Sigmoid
+    reg func_select;  
     wire busy;
     wire done;
     wire signed [WIDTH:0] result;
@@ -21,13 +19,13 @@ module tb_cordic_sigmoid;
     real scale_factor;
     real expected, actual, error;
 
-    // Clock
+
     initial begin
         clk = 0;
         forever #5 clk = ~clk;
     end
 
-    // DUT instantiation
+
     cordic_final #(
         .WIDTH(WIDTH),
         .FRAC(FRAC),
@@ -44,7 +42,7 @@ module tb_cordic_sigmoid;
         .result(result)
     );
 
-    // Test vectors
+
     real test_inputs [0:9];
     integer input_q14 [0:9];
 
@@ -62,32 +60,27 @@ module tb_cordic_sigmoid;
 
     end
 
-    // Main test process
     initial begin
         $dumpfile("tb_cordic_sigmoid.vcd");
         $dumpvars(0, tb_cordic_sigmoid);
 
         scale_factor = 2.0 ** FRAC;
 
-        // Reset
         rst_n = 0;
         start = 0;
-        func_select = 0; // SIGMOID
+        func_select = 0; 
         #20 rst_n = 1;
 
         $display("\n=== Testing SIGMOID Function ===");
         for (i = 0; i < 10; i = i + 1) begin
-            // Apply input
             x_in = input_q14[i];
             @(posedge clk);
             start = 1;
             @(posedge clk);
             start = 0;
 
-            // Wait for done
             wait(done);
 
-            // Compute expected and compare
             expected = 1.0 / (1.0 + $exp(-test_inputs[i]));
             actual   = $itor(result) / scale_factor;
             error    = (actual - expected);
