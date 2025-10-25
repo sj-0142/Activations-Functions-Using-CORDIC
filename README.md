@@ -9,8 +9,8 @@ The design leverages DSP slices, pipeline registers, and polynomial approximatio
 ## Features  
 - **Fully Pipelined CORDIC Engine**: Computes hyperbolic functions (`sinh`, `tanh`, `sigmoid`) with high throughput.  
 - **Polynomial Approximation Optimization**: Custom `1/cosh(x)` approximation with **Mean Absolute Error (MAE) ≈ 2 × 10⁻⁴**.  
-- **Clock Speed**: Achieves a maximum operating frequency of **80 MHz** on Nexys-4 FPGA.  
-- **Low Power**: Consumes only **0.021 W dynamic power** and **0.1W of total power**.  
+- **Clock Speed**: Achieves a maximum operating frequency of **90 MHz** on Nexys-4 FPGA.  
+- **Low Power**: Consumes only **21 mW dynamic power** and **0.1W of total power**.  
 - **Scalable Parameters**: Configurable bit-width (`WIDTH`), fractional precision (`FRAC`), and pipeline depth (`ITER`, `POST_STAGES`).  
 
 ---
