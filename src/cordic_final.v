@@ -7,52 +7,47 @@
 
 (* keep_hierarchy = "yes", use_dsp = "yes" *)
 module cordic_final #(
-    parameter WIDTH = 32,           // Data width (bits)
-    parameter FRAC = 14,            // Fractional bits (Q14 format)
-    parameter ITER = 16,            // Number of CORDIC iterations
-    parameter LOG_ITER = 4,         // log2(ITER) for counter width
-    parameter POST_STAGES = 5       // Additional pipeline stages for tanh/sigmoid
+    parameter WIDTH = 32,          
+    parameter FRAC = 14,           
+    parameter ITER = 16,           
+    parameter LOG_ITER = 4,         
+    parameter POST_STAGES = 5       
 )
 (
     input wire                    clk,
-    input wire                    rst_n,        // asynchronous active-low reset
-    input wire                    start,        // pulse to begin computation
-    input wire signed [WIDTH-1:0] x_in,         // input x in Q(FRAC) format
-    input wire                    func_select,  // function selection
-    output reg                    busy,         // high during computation
-    output reg                    done,         // one-cycle 'done' pulse
-    output reg signed [WIDTH:0] result        // function result in Q(FRAC) format
+    input wire                    rst_n,        
+    input wire                    start,        
+    input wire signed [WIDTH-1:0] x_in,         
+    input wire                    func_select,  
+    output reg                    busy,         
+    output reg                    done,         
+    output reg signed [WIDTH:0] result       
 );
 
-    localparam signed [WIDTH-1:0] ONE_Q = (1 << FRAC);          // 1.0 in Q14 format
-    localparam signed [WIDTH-1:0] ONE_Q_1 = ONE_Q >> 1;          // 0.5 in Q14 format
-    localparam signed [WIDTH-1:0] K_INV_SCALED = 16'sd19784;    // K^(-1) = 1.207 in Q14 format
+    localparam signed [WIDTH-1:0] ONE_Q = (1 << FRAC);         
+    localparam signed [WIDTH-1:0] ONE_Q_1 = ONE_Q >> 1;         
+    localparam signed [WIDTH-1:0] K_INV_SCALED = 16'sd19784;    
 
-    // Block RAM for lookup tables (frees LUTs)
     (* ram_style = "block" *) reg [5:0] shift_lut [0:ITER-1];
     (* ram_style = "block" *) reg signed [WIDTH-1:0] atanh_lut [0:ITER-1];
 
-    // Pipelined registers for all 17 stages to compute sinh and cosh 
     reg signed [WIDTH-1:0] x_pipe [0:ITER];
     reg signed [WIDTH-1:0] y_pipe [0:ITER];
     reg signed [WIDTH-1:0] z_pipe [0:ITER];
-    reg signed [WIDTH-1:0] k; // added to result (Tanh -> 0, Sigmoid -> 0.5)
+    reg signed [WIDTH-1:0] k; 
     reg valid_pipe [0:ITER];
 
-    // Post-CORDIC pipeline stages for tanh/sigmoid computation [5 stages]
     reg signed [WIDTH-1:0] x_input_pipe [0:POST_STAGES-1];
     reg signed [WIDTH-1:0] y_result_pipe [0:POST_STAGES-1];
     reg func_select_pipe [0:POST_STAGES-1];
     reg valid_post_pipe [0:POST_STAGES-1];
 
-    // Post-pipeline intermediate calculation registers
     reg signed [2*WIDTH-1:0] x_squared_pipe [0:POST_STAGES-1];
     reg signed [2*WIDTH-1:0] coeff_term_pipe [0:POST_STAGES-1];
     reg signed [WIDTH-1:0] one_minus_approx_pipe [0:POST_STAGES-1];
     reg signed [2*WIDTH-1:0] final_product_pipe [0:POST_STAGES-1];
     reg signed [WIDTH-1:0] extracted_result_pipe [0:POST_STAGES-1];
 
-    // State machine variables for flow control
     reg [1:0] state, next_state;
     reg [LOG_ITER:0] stage_counter;
 
@@ -61,32 +56,27 @@ module cordic_final #(
     localparam [1:0] OUTPUT = 2'b10;
 
   
-    reg signed [WIDTH-1:0] x_input_stored;  // Stores input for tanh calculation
+    reg signed [WIDTH-1:0] x_input_stored;  
     
     integer i;
 
-    // Initialize lookup tables
     initial begin        
-        // Hyperbolic CORDIC shift sequence
         shift_lut[0]  = 6'd1;   shift_lut[1]  = 6'd2;   shift_lut[2]  = 6'd3;   shift_lut[3]  = 6'd4;
         shift_lut[4]  = 6'd4;   shift_lut[5]  = 6'd5;   shift_lut[6]  = 6'd6;   shift_lut[7]  = 6'd7;
         shift_lut[8]  = 6'd8;   shift_lut[9]  = 6'd9;   shift_lut[10] = 6'd10;  shift_lut[11] = 6'd11;
         shift_lut[12] = 6'd12;  shift_lut[13] = 6'd13;  shift_lut[14] = 6'd13;  shift_lut[15] = 6'd14;
 
-        // arctanh lookup table values in Q14 format
         atanh_lut[0]  = 16'sd9000;   atanh_lut[1]  = 16'sd4185;   atanh_lut[2]  = 16'sd2059;   atanh_lut[3]  = 16'sd1025;
         atanh_lut[4]  = 16'sd1025;   atanh_lut[5]  = 16'sd512;    atanh_lut[6]  = 16'sd256;    atanh_lut[7]  = 16'sd128;
         atanh_lut[8]  = 16'sd64;     atanh_lut[9]  = 16'sd32;     atanh_lut[10] = 16'sd16;     atanh_lut[11] = 16'sd8;
         atanh_lut[12] = 16'sd4;      atanh_lut[13] = 16'sd2;      atanh_lut[14] = 16'sd2;      atanh_lut[15] = 16'sd1;
         
-        // Initialize pipeline registers to zero
         for (i = 0; i < ITER; i = i + 1) begin
             x_pipe[i] = 0;
             y_pipe[i] = 0;
             z_pipe[i] = 0;
         end
 
-        // Initialize post-pipeline registers to zero
         for (i = 0; i < POST_STAGES; i = i + 1) begin
             x_input_pipe[i] = 0;
             y_result_pipe[i] = 0;
@@ -105,7 +95,7 @@ module cordic_final #(
             // z_positive -> if we need to rotate left or right
             // x_pipe -> cosh output
             // y_pipe -> sinh output
-            //z_pipe -> angle left to be rotated
+            // z_pipe -> angle left to be rotated
             // x_shifted -> x_k>>i_k [current_shift -> i_k]
             
     genvar stage;
@@ -244,7 +234,7 @@ module cordic_final #(
         endcase
     end  
     
-// Main control logic
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= IDLE;
@@ -253,7 +243,7 @@ module cordic_final #(
             result <= {WIDTH{1'b0}};
             stage_counter <= {(LOG_ITER+1){1'b0}};
 
-            // Reset all calculation variables
+
             x_pipe[0] <= {WIDTH{1'b0}};
             y_pipe[0] <= {WIDTH{1'b0}};
             z_pipe[0] <= {WIDTH{1'b0}};
@@ -263,16 +253,15 @@ module cordic_final #(
 
         end else begin
             state <= next_state;
-            done <= 1'b0;  // Default to low, pulse high for one cycle
+            done <= 1'b0;  
 
             case (state)
                 IDLE: begin
                     busy <= 1'b0;
                     stage_counter <= {(LOG_ITER+1){1'b0}};
                     if (start) begin
-                        // Initialize pipeline input stage
-                        x_pipe[0] <= K_INV_SCALED;  // K^(-1) ≈ 1.207 in Q14
-                        y_pipe[0] <= {WIDTH{1'b0}}; // 0
+                        x_pipe[0] <= K_INV_SCALED;  
+                        y_pipe[0] <= {WIDTH{1'b0}}; 
                         
                         if (func_select) begin // Tanh logic -> [tanh(x) = 1*tanh(x) + 0]
                             z_pipe[0] = x_in; 
@@ -298,7 +287,6 @@ module cordic_final #(
                     busy <= 1'b0;
 
                     if (valid_post_pipe[POST_STAGES-1]) begin
-                        // FINAL RESULT SELECT 
                         if (func_select_pipe[POST_STAGES-1]) begin
                             // Tanh(x)
                             result <= extracted_result_pipe[POST_STAGES-1];
